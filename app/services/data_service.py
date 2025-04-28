@@ -4,6 +4,7 @@ from app.database.mongodb import get_sync_client
 import logging
 import random
 from datetime import datetime, timedelta
+from app.services.cache_service import cache
 
 logger = logging.getLogger("data_service")
 

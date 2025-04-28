@@ -145,11 +145,12 @@ async def predict_sales_body(request: PredictionBodyRequest):
             "ultima_fecha": resultado["ultima_fecha"],
             "predicciones": resultado["predicciones"],
             "productos_por_mes": resultado["prediccion_productos"],
-            "metricas": resultado["metricas"]
+            "metricas": resultado["metricas"],
+            "datos_ngx_charts": resultado["datos_ngx_charts"]
         }
         
         # Incluir gráfico si se solicita
-        if request.incluir_grafico:
+        if request.incluir_grafico and "grafico_base64" in resultado:
             response["grafico_base64"] = f"data:image/png;base64,{resultado['grafico_base64']}"
             
         return response
@@ -162,7 +163,6 @@ async def predict_sales_body(request: PredictionBodyRequest):
             status_code=500, 
             detail=f"Error interno al generar predicción: {str(e)}"
         )
-
 @router.get("/charts/{categoria}")
 async def get_chart(
     categoria: str, 

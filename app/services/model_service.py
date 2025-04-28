@@ -302,6 +302,14 @@ def predecir_ventas(categoria_id, meses=3):
         # Importar dependencias necesarias
         import numpy as np
         from bson import ObjectId
+        import matplotlib.pyplot as plt
+        import os
+        import joblib
+        from datetime import datetime
+        import logging
+        import pandas as pd
+        
+        logger = logging.getLogger(__name__)
         
         # Cargar datos para generar predicciones de productos
         ventas, detalles, productos, categorias_data = cargar_datos()
@@ -479,7 +487,7 @@ def predecir_ventas(categoria_id, meses=3):
                 'productos': productos_mes
             })
         
-        # Generar gráfico
+        # Generar gráfico (solo para archivo, no para respuesta)
         plt.figure(figsize=(12, 7))
         
         # Datos históricos
@@ -520,23 +528,67 @@ def predecir_ventas(categoria_id, meses=3):
         plt.legend()
         plt.tight_layout()
         
-        # Guardar gráfico
+        # Guardar gráfico en disco
         chart_filename = f"pred_{categoria_id_str}.png"
         chart_path = os.path.join("app", "static", "charts", chart_filename)
         plt.savefig(chart_path)
-        
-        # Convertir gráfico a base64 para API
-        img_data = io.BytesIO()
-        plt.savefig(img_data, format='png')
-        img_data.seek(0)
-        grafico_base64 = base64.b64encode(img_data.getvalue()).decode()
         
         plt.close()
         
         # Asegurarse que la categoría sea string (no ObjectId)
         if isinstance(categoria, ObjectId):
             categoria = str(categoria)
+        
+        # Crear datos para NGX Charts
+        datos_ngx_charts = []
+        
+        # Preparar datos históricos
+        for i, periodo in enumerate(periodos_hist):
+            anio = periodo // 12
+            mes = periodo % 12
+            if mes == 0:
+                mes = 12
+                
+            etiqueta = f"{mes}/{anio}"
             
+            datos_ngx_charts.append({
+                "nombre": etiqueta,
+                "historico": float(ventas_hist[i]),
+                "prediccion": None,
+                "rango_inferior": None,
+                "rango_superior": None
+            })
+        
+        # Punto de conexión - usar el último valor histórico para la primera predicción
+        ultimo_valor_historico = float(ventas_hist[-1])
+        
+        # Añadir predicciones
+        for i, periodo in enumerate(periodos_pred):
+            anio = periodo // 12
+            mes = periodo % 12
+            if mes == 0:
+                mes = 12
+                
+            etiqueta = f"{mes}/{anio}"
+            
+            # Si es el primer punto, conectar con el histórico
+            if i == 0:
+                datos_ngx_charts.append({
+                    "nombre": etiqueta,
+                    "historico": ultimo_valor_historico,  # Punto de conexión
+                    "prediccion": float(prediccion_futura[i]),
+                    "rango_inferior": float(rango_inferior[i]),
+                    "rango_superior": float(rango_superior[i])
+                })
+            else:
+                datos_ngx_charts.append({
+                    "nombre": etiqueta,
+                    "historico": None,
+                    "prediccion": float(prediccion_futura[i]),
+                    "rango_inferior": float(rango_inferior[i]),
+                    "rango_superior": float(rango_superior[i])
+                })
+        
         # Convertir métricas (posibles valores NumPy)
         metricas_convertidas = {}
         for key, val in metricas.items():
@@ -547,15 +599,15 @@ def predecir_ventas(categoria_id, meses=3):
             else:
                 metricas_convertidas[key] = val
             
-        # Construir respuesta con tipos serializables
+        # Construir respuesta SIN incluir grafico_base64
         resultado = {
-            'categoria': str(categoria),  # Asegurar que es string
-            'categoria_id': str(categoria_id),  # Añadir el ID original
+            'categoria': str(categoria),
+            'categoria_id': str(categoria_id),
             'ultima_fecha': datetime.strptime(ultima_fecha, '%Y-%m-%d'),
             'predicciones': predicciones,
-            'prediccion_productos': productos_por_mes,
-            'grafico_base64': grafico_base64,
-            'metricas': metricas_convertidas
+            'prediccion_productos': productos_por_mes,  # CAMBIO: 'productos_por_mes' → 'prediccion_productos'
+            'metricas': metricas_convertidas,
+            'datos_ngx_charts': datos_ngx_charts
         }
         
         return resultado
