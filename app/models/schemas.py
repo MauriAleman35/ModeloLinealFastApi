@@ -23,7 +23,7 @@ class MesPrediction(BaseModel):
 class PredictionResponse(BaseModel):
     categoria: str
     ultima_fecha: datetime
-    predicciones: List[MesPrediction]
+    predicciones: List[MesPrediction] = []
     grafico_base64: Optional[str] = None
     metricas: Dict[str, Any] = {}
 
