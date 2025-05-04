@@ -1,0 +1,11 @@
+services:
+    app:
+      build:
+        context: .
+        dockerfile: Dockerfile
+      image: modelolineal:latest
+      container_name: modelolineal
+      ports:
+        - "5000:5000"
+      env_file:
+        - .env
